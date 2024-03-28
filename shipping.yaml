@@ -1,0 +1,86 @@
+- name: shipping
+  hosts: shipping
+  become: yes
+  tasks:
+  - name: installing maven
+    ansible.builtin.yum:
+      name: maven
+      state: installed
+  - name: check the user exist or not
+    ansible.builtin.command: id roboshop
+    register: result
+    ignore_errors: true
+    
+  - when: result.rc =! 0
+  - name: create user
+    ansible.builtin.user:
+      name: roboshop
+      
+  - name: checking the dir exist or not
+    ansible.builtin.stat:
+      path: /app
+    register: directory
+
+  - name: print the directory.stat.exists
+    ansible.builtin.debug:
+    msg: output "{{directory}}"
+
+  - when: directory.stat.exists == false
+    ansible.builtin.file:
+      path: /app
+      state: directory
+
+  - name: downloading
+    ansible.builtin.unarchive:
+      src: https://roboshop-builds.s3.amazonaws.com/shipping.zip
+      dest: /tmp/shipping.zip
+      remote_src: yes
+
+  - name: downloading dependencies
+    ansible.builtin.command: mvn clean package
+    args:
+      chdir: /app
+
+  - name: rename jar file
+    ansible.builtin.command: target/shipping-1.0.jar shipping.jar
+    args:
+      chdir: /app
+
+  - name: copy 
+    ansible.builtin.copy:
+      src: shipping.jar
+      dest: /etc/systemd/system/shipping.service
+
+  - name: deamon
+    ansible.builtin.systemd:
+      name: shipping
+      deamon_reload: yes
+
+  - name: start and enable
+    ansible.builtin.service:
+      name: shipping
+      state: started
+      enabled: yes
+
+  - name: installing
+    ansible.builtin.yum: 
+      name: mysql
+      state: installed
+
+  - name: connecting
+    ansible.builtin.shell: mysql -h <mysql.ssshankar.site> -uroot -pRoboShop@1 < /app/schema/shipping.sql 
+
+  - name: restart
+    ansible.builtin.restart:
+      name: mysqld
+      state: restart
+
+
+
+
+
+
+
+
+
+

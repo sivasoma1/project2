@@ -1,0 +1,45 @@
+- name: webserver
+  hosts: web
+  become: yes
+  tasks:
+  # Install Apache Web Server
+  - name: install apache package
+    ansible.builtin.yum:
+      name: nginx
+      state: installed
+
+  - name: install apache package
+    ansible.builtin.service:
+      name: nginx
+      state: started
+      enabled: yes
+
+  - name: remove the file
+    ansible.builtin.file:
+      path: /usr/share/nginx/html/*
+      state: absent
+    
+  - name: download the frontend content
+    ansible.builtin.get_url:
+      src: https://roboshop-builds.s3.amazonaws.com/web.zip
+      dest: /tmp
+
+  - name: extract the file
+    ansible.builtin.Unarchive:
+      src: /tmp/web.zip 
+      dest: /usr/share/nginx
+      remote_src: yes
+
+  - name: copy roboshop.conf
+    ansible.builtin.copy:
+      src: roboshop.conf
+      dest: /etc/nginx/default.d/roboshop.conf
+
+  - name: restart
+    ansible.builtin.restart:
+      name: nginx
+      state: restarted
+
+    
+  
+  

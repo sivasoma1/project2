@@ -1,0 +1,88 @@
+- name: user
+  hosts: user
+  become: yes
+  tasks:
+  - name:
+    ansible.builtin.shell: curl -sL https://rpm.nodesource.com/setup_lts.x | bash
+
+  - name: installing  nodejs 
+    ansible.builtin.yum:
+      state: present
+      name: "nodejs"
+
+  - name: to check the user exist or not
+    ansible.builtin.command: id roboshop
+    register: result
+    ignore_errors: true
+  
+  - when: result.rc != 0 
+    ansible.builtin.user:
+      name: roboshop
+      state: present
+    
+  - name: TO check /app directory exist or not
+    ansible.builtin.stat:
+      path: /app
+    register: output
+
+  - when: register.stat.exist == False
+    ansible.builtin.file:
+      path: /app
+      state: directory
+
+  - name: npm install
+    ansible.builtin.get_url:
+      src: https://roboshop-builds.s3.amazonaws.com/user.zip
+      dest: /app
+
+  - name: unarchieve
+    ansible.builtin.Unarchive:
+      src: /tmp/user.zip
+      dest: /app
+      remote_src: yes
+
+  - name: npm install
+    ansible.builtin.command: npm install
+    args:
+      chdir: /app
+
+  - name: copy
+    ansible.builtin.copy:
+      src: user.service
+      dest: /etc/systemd/system/user.service
+
+  - name: deamon
+    ansible.builtin.systemd:
+      deamon_reload: true
+
+  - name: start & enabled
+    ansible.builtin.service:
+      name: user
+      state: started
+      enabled: yes
+
+  - name: copy
+    ansible.builtin.copy:
+      src: mongo.repo
+      dest: /etc/yum.repos.d/mongo.repo
+
+  - name: installing
+    ansible.builtin.yum:
+      name: mongodb-org-shell
+      state: present
+
+  - name: connection
+    ansible.builtin.command: mongo --host mongo.ssshankar.site </app/schema/user.js
+
+  - name: restart
+    ansible.builtin.restart:
+      name: user
+      state: restarted
+      enabled: yes
+
+
+
+
+
+
+    

@@ -1,0 +1,66 @@
+- name: payment
+  hosts: payment
+  become: yes
+  tasks:
+  - name: installing  python3 and pip for the application server
+    ansible.builtin.yum:
+      name: "{{ item }}"
+      state: present
+    loop:
+    - python3-devel
+    - python36
+    - gcc 
+  
+  - name: user exist or not
+    ansible.builtin.command: id roboshop
+    register: result
+    ignore_errors:  true
+
+  - when: result.rc != 0
+  - name: create a new user if it does not exist
+    ansible.builtin.user:
+      name: roboshop
+
+  - name: create a directory and check it exist or not
+    ansible.builtin.stat:
+      path: /app
+    register: directory
+  - name: print the directory stats
+    ansible.builtin.debug:
+      msg: "output: {{directory}}"
+
+  - when: directory.stat.exists == False
+
+    ansible.builtin.file:
+      path: /app
+      state: directory
+
+  
+  - name: Download payment and extract
+    ansible.builtin.unarchive:
+      src: https://roboshop-builds.s3.amazonaws.com/payment.zip
+      dest: /app
+      remote_src: yes
+      
+  - name: changedirectory
+    ansible.builtin.command: pip3.6 install -r requirements.txt
+    args:
+      chdir: /app
+
+  - name: copy
+    ansible.builtin.copy:
+      src: payment.zip
+      dest: /etc/systemd/system/payment.service
+
+  - name: deamon-reload
+    ansible.builtin.systemd:
+      deamon_reload: true
+
+  - name: restart
+    ansible.builtin.restart:
+      name: catalogue
+      state: restarted
+      enabled: yes
+
+  
+
